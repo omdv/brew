@@ -32,6 +32,9 @@ class Combiner(object):
         out = np.zeros((n_samples,))
 
         for i in range(n_samples):
-            out[i] = self.rule(results[i, :, :])
+            if results.ndim == 3:
+                out[i] = self.rule(results[i, :, :])
+            elif results.ndim == 2:
+                out[i] = results[i]
 
         return out

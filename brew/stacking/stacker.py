@@ -32,8 +32,11 @@ class EnsembleStack(object):
             for tra, tst in skf:
                 self.layers[layer_idx].fit(X[tra], y[tra])
                 out = self.layers[layer_idx].output(X[tst], mode=self.mode)
-                output[tst, :] = out[:, 1:, :].reshape(
-                    out.shape[0], (out.shape[1] - 1) * out.shape[2])
+                if self.mode in ['probs', 'votes']:
+                    output[tst, :] = out[:, 1:, :].reshape(
+                        out.shape[0], (out.shape[1] - 1) * out.shape[2])
+                elif self.mode in ['labels']:
+                    output[tst, :] = out
 
             self.layers[layer_idx].fit(X, y)
             self.fit_layer(layer_idx + 1, output, y)
@@ -46,8 +49,11 @@ class EnsembleStack(object):
             for layer in self.layers:
                 layer.fit(X_, y)
                 out = layer.output(X_, mode=self.mode)
-                X_ = out[:, 1:, :].reshape(
-                    out.shape[0], (out.shape[1] - 1) * out.shape[2])
+                if self.mode in ['probs', 'votes']:
+                    X_ = out[:, 1:, :].reshape(
+                        out.shape[0], (out.shape[1] - 1) * out.shape[2])
+                elif self.mode in ['labels']:
+                    X_ = out
 
         return self
 
@@ -56,8 +62,11 @@ class EnsembleStack(object):
 
         for layer in self.layers:
             out = layer.output(input_, mode=self.mode)
-            input_ = out[:, 1:, :].reshape(
-                out.shape[0], (out.shape[1] - 1) * out.shape[2])
+            if self.mode in ['probs', 'votes']:
+                input_ = out[:, 1:, :].reshape(
+                    out.shape[0], (out.shape[1] - 1) * out.shape[2])
+            elif self.mode in ['labels']:
+                input_ = out
 
         return out
 
@@ -70,19 +79,19 @@ class EnsembleStackClassifier(object):
             self.combiner = Combiner(rule='mean')
         elif isinstance(combiner, str):
             if combiner == 'majority_vote':
-                raise ValueError('EnsembleStackClassifier '
-                        'do not support majority_vote')
+                raise ValueError(
+                    'EnsembleStackClassifier '
+                    'do not support majority_vote')
             self.combiner = Combiner(rule=combiner)
         elif isinstance(combiner, Combiner):
             self.combiner = combiner
         else:
             raise ValueError('Invalid combiner!')
 
-
     def fit(self, X, y):
         self.stack.fit(X, y)
         return self
-        
+
     def predict(self, X):
         out = self.stack.output(X)
         return self.combiner.combine(out)
